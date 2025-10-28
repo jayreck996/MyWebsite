@@ -3,6 +3,7 @@ import { useState } from 'react';
 export function IAMPolicyHelper() {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(true);
+  const [showScanError, setShowScanError] = useState(false);
 
   const policy = {
     Version: "2012-10-17",

@@ -126,6 +126,71 @@ app.get("/make-server-3699ee41/aws-config", (c) => {
   });
 });
 
+// Test DynamoDB write operation
+app.post("/make-server-3699ee41/test-write", async (c) => {
+  try {
+    const tableName = Deno.env.get('AWS_DYNAMODB_TABLE_NAME')?.trim();
+    const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID')?.trim();
+    const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY')?.trim();
+    const region = Deno.env.get('AWS_REGION')?.trim() || 'us-east-1';
+
+    if (!tableName || !accessKeyId || !secretAccessKey) {
+      return c.json({ 
+        success: false, 
+        error: 'AWS credentials not fully configured',
+        missing: {
+          tableName: !tableName,
+          accessKeyId: !accessKeyId,
+          secretAccessKey: !secretAccessKey,
+        }
+      }, 400);
+    }
+
+    if (!dynamoDbClient) {
+      return c.json({ 
+        success: false, 
+        error: 'DynamoDB client not initialized' 
+      }, 500);
+    }
+
+    console.log(`TEST WRITE - Table: ${tableName}, Region: ${region}`);
+
+    const testId = `test-${Date.now()}`;
+    
+    const putCommand = new PutItemCommand({
+      TableName: tableName,
+      Item: {
+        userId: { S: testId },
+        name: { S: 'Test User' },
+        email: { S: 'test@example.com' },
+        message: { S: 'This is a test write from the diagnostic tool' },
+        timestamp: { S: new Date().toISOString() },
+        status: { S: 'test' },
+      },
+    });
+
+    console.log('Sending test PutItemCommand...');
+    const result = await dynamoDbClient.send(putCommand);
+    console.log('Test write successful!', result);
+
+    return c.json({
+      success: true,
+      message: 'Test item written successfully to DynamoDB',
+      testId: testId,
+      tableName: tableName,
+      result: result,
+    });
+  } catch (error) {
+    console.error('Test write error:', error);
+    return c.json({
+      success: false,
+      error: error.message,
+      errorName: error.name,
+      details: error.toString(),
+    }, 500);
+  }
+});
+
 // Test AWS DynamoDB connection endpoint
 app.get("/make-server-3699ee41/test-dynamodb", async (c) => {
   try {
@@ -285,8 +350,25 @@ app.post("/make-server-3699ee41/contact", async (c) => {
         },
       });
 
-      await requestDynamoDbClient.send(putCommand);
-      console.log(`Contact submission stored in DynamoDB with ID: ${submissionId}`);
+      console.log('About to send PutItemCommand to DynamoDB...');
+      console.log('PutItemCommand details:', JSON.stringify({
+        TableName: tableName,
+        Region: region,
+        ItemKeys: Object.keys({
+          userId: { S: submissionId },
+          id: { S: submissionId },
+          name: { S: name },
+          email: { S: email },
+          message: { S: message },
+          fileUrl: { S: fileUrl || '' },
+          timestamp: { S: timestamp },
+          status: { S: 'new' },
+        })
+      }, null, 2));
+      
+      const putResult = await requestDynamoDbClient.send(putCommand);
+      console.log('DynamoDB PutItem result:', JSON.stringify(putResult, null, 2));
+      console.log(`✅ Contact submission stored in DynamoDB with ID: ${submissionId}`);
     } catch (error) {
       console.error('DynamoDB error details:', error);
       console.error('Error name:', error.name);

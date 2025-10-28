@@ -4,8 +4,10 @@ import { projectId, publicAnonKey } from '../utils/supabase/info';
 export function AWSConfigCheck() {
   const [config, setConfig] = useState<any>(null);
   const [testResult, setTestResult] = useState<any>(null);
+  const [writeResult, setWriteResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testingWrite, setTestingWrite] = useState(false);
 
   const checkConfig = async () => {
     setLoading(true);
@@ -50,6 +52,30 @@ export function AWSConfigCheck() {
     }
   };
 
+  const testWrite = async () => {
+    setTestingWrite(true);
+    setWriteResult(null);
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-3699ee41/test-write`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${publicAnonKey}`,
+          },
+        }
+      );
+      const data = await response.json();
+      setWriteResult(data);
+      console.log('DynamoDB write test result:', data);
+    } catch (error) {
+      console.error('Error testing write:', error);
+      setWriteResult({ success: false, error: (error as Error).message });
+    } finally {
+      setTestingWrite(false);
+    }
+  };
+
   return (
     <div style={{
       position: 'fixed',
@@ -73,7 +99,7 @@ export function AWSConfigCheck() {
           marginBottom: '0.5rem'
         }}>
           <h3 style={{ fontSize: '0.875rem', marginBottom: 0 }}>AWS Configuration</h3>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
               onClick={checkConfig}
               disabled={loading}
@@ -104,7 +130,28 @@ export function AWSConfigCheck() {
                   Testing...
                 </>
               ) : (
-                'Test DB'
+                'Test Read'
+              )}
+            </button>
+            <button
+              onClick={testWrite}
+              disabled={testingWrite}
+              className="btn"
+              style={{
+                fontSize: '0.75rem',
+                padding: '0.25rem 0.75rem',
+                background: '#f59e0b',
+                color: 'white',
+                minHeight: 'auto'
+              }}
+            >
+              {testingWrite ? (
+                <>
+                  <span className="spinner" style={{ width: '0.75rem', height: '0.75rem' }}></span>
+                  Writing...
+                </>
+              ) : (
+                'Test Write'
               )}
             </button>
           </div>
@@ -177,7 +224,7 @@ export function AWSConfigCheck() {
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                   <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
-                <span>Connection Successful</span>
+                <span>Read Test: Connection Successful</span>
               </div>
               <div style={{ marginTop: '0.25rem' }}>
                 <strong>User:</strong> {testResult.user}
@@ -198,7 +245,7 @@ export function AWSConfigCheck() {
                   <line x1="15" y1="9" x2="9" y2="15" />
                   <line x1="9" y1="9" x2="15" y2="15" />
                 </svg>
-                <span>Connection Failed</span>
+                <span>Read Test Failed</span>
               </div>
               {testResult.name && (
                 <div style={{ marginTop: '0.25rem' }}>
@@ -227,6 +274,74 @@ export function AWSConfigCheck() {
                   wordBreak: 'break-all'
                 }}>
                   {testResult.details}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {writeResult && (
+        <div style={{ marginTop: '0.75rem' }}>
+          {writeResult.success ? (
+            <div className="alert-success" style={{ padding: '0.5rem', fontSize: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                <svg className="icon-sm" viewBox="0 0 24 24">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                <span>Write Test: SUCCESS!</span>
+              </div>
+              <div style={{ marginTop: '0.5rem', fontSize: '0.625rem' }}>
+                <div><strong>Test ID:</strong> {writeResult.testId}</div>
+                <div><strong>Table:</strong> {writeResult.tableName}</div>
+                <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: '#d1fae5', borderRadius: '0.25rem' }}>
+                  ✅ Item successfully written to DynamoDB!<br/>
+                  Check AWS Console to verify the item exists.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="alert-error" style={{ padding: '0.5rem', fontSize: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                <svg className="icon-sm" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+                <span>Write Test Failed</span>
+              </div>
+              {writeResult.errorName && (
+                <div style={{ marginTop: '0.25rem' }}>
+                  <strong>{writeResult.errorName}</strong>
+                </div>
+              )}
+              <div style={{ color: '#7f1d1d', marginTop: '0.25rem' }}>
+                {writeResult.error || 'Unknown error'}
+              </div>
+              {writeResult.errorName === 'AccessDeniedException' && (
+                <div style={{
+                  marginTop: '0.5rem',
+                  padding: '0.5rem',
+                  background: '#fef3c7',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid #fde047',
+                  color: '#92400e'
+                }}>
+                  <strong>⚠️ Missing Permission:</strong><br/>
+                  Your IAM user needs <code style={{ background: '#fde68a', padding: '0 0.25rem' }}>dynamodb:PutItem</code> permission.<br/>
+                  <br/>
+                  <strong>Fix:</strong> Add this permission to your IAM policy (see yellow banner at top)
+                </div>
+              )}
+              {writeResult.details && (
+                <div style={{
+                  color: '#991b1b',
+                  marginTop: '0.25rem',
+                  fontSize: '0.625rem',
+                  wordBreak: 'break-all'
+                }}>
+                  {writeResult.details}
                 </div>
               )}
             </div>

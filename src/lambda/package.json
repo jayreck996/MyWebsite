@@ -1,0 +1,20 @@
+{
+  "name": "contact-form-lambda",
+  "version": "1.0.0",
+  "description": "AWS Lambda functions for contact form",
+  "main": "contact-handler.js",
+  "scripts": {
+    "package": "npm install && zip -r function.zip . -x '*.git*' 'node_modules/@types/*' '*.md'",
+    "package-contact": "npm install && cd .. && zip -r lambda/contact-function.zip lambda/contact-handler.js lambda/package.json lambda/node_modules -x '*.git*' 'lambda/node_modules/@types/*'",
+    "package-test": "npm install && cd .. && zip -r lambda/test-function.zip lambda/test-handler.js lambda/package.json lambda/node_modules -x '*.git*' 'lambda/node_modules/@types/*'"
+  },
+  "keywords": ["lambda", "aws", "contact-form"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.450.0",
+    "@aws-sdk/client-dynamodb": "^3.450.0",
+    "@aws-sdk/client-sts": "^3.450.0",
+    "lambda-multipart-parser": "^1.0.1"
+  }
+}
